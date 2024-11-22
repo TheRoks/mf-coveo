@@ -1,101 +1,83 @@
-import Image from "next/image";
+import { Facet } from '@/components/facets';
+import ResultList from '@/components/result-list';
+import SearchBox from '@/components/search-box';
+import { SearchPageProvider } from '@/components/search-page';
+import SearchParameterManager from '@/components/search-parameter-manager';
+import {
+  fetchStaticState,
+  setNavigatorContextProvider,
+} from '@/lib/engine';
+import { buildSSRSearchParameterSerializer } from '@coveo/headless-react/ssr';
+import { headers } from 'next/headers';
+import { NextJsAppRouterNavigatorContext } from '../navigatorContextProvider';
 
-export default function Home() {
+
+/**
+ * This file defines a Search component that uses the Coveo Headless library to manage its state.
+ *
+ * The Search function is the entry point for server-side rendering (SSR). It uses the `buildSearchParameterSerializer` util from the Coveo Headless
+ * library to serialize the url search parameters into a string, which is then used by the [SearchParameterManager](https://docs.coveo.com/en/headless/latest/reference/search/controllers/search-parameter-manager) controller.
+ *
+ * To synchronize search parameters with the URL with more control on the serialization, you can use the [SearchParameterManager](https://docs.coveo.com/en/headless/latest/reference/search/controllers/search-parameter-manager/) controller. For sake of brevity, this sample uses the SearchParameterManager controller.
+ *
+ * The context values are hard-coded to represent a specific user segment (age group 30-45 with a main interest in sports) as the initial context.
+ * These values will be added to the payload of the search request when the search page is rendered.
+ */
+
+export default async function Search(props: { params: Promise<{ q: string }> }) {
+  // Convert URL search parameters into a format that Coveo's search engine can understand.
+  const { toSearchParameters } = buildSSRSearchParameterSerializer();
+  const searchParameters = toSearchParameters(await props.params);
+
+  // Defines hard-coded context values to simulate user-specific information.
+  const contextValues = {
+    ageGroup: '30-45',
+    mainInterest: 'sports',
+  };
+
+  // Sets the navigator context provider to use the newly created `navigatorContext` before fetching the app static state
+  const navigatorContext = new NextJsAppRouterNavigatorContext(await headers());
+
+  setNavigatorContextProvider(() => navigatorContext);
+
+  // Fetches the static state of the app with initial state (when applicable)
+  const staticState = await fetchStaticState({
+    controllers: {
+      context: {
+        initialState: {
+          values: contextValues,
+        },
+      },
+      searchParameterManager: {
+        initialState: { parameters: searchParameters },
+      },
+    },
+  });
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="container mx-auto p-4">
+      <SearchPageProvider
+        staticState={staticState}
+        navigatorContext={navigatorContext.marshal}
+      >
+        <header>
+          <h1 className="text-3xl font-bold mb-8">Search Results</h1>
+        </header>
+        <SearchBox />
+        <div className="flex flex-col md:flex-row gap-8">
+          <aside className="w-full md:w-1/4" aria-label="Search filters">
+            <Facet />
+          </aside>
+          <main className="w-full md:w-3/4">
+            <ResultList />
+            <SearchParameterManager />
+          </main>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </SearchPageProvider>
     </div>
   );
 }
+
+// A page with search parameters cannot be statically rendered, since its rendered state should look different based on the current search parameters.
+// https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config#dynamic
+export const dynamic = 'force-dynamic';
